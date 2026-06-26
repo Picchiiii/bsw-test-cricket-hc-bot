@@ -3,7 +3,13 @@ import discord
 from discord.ext import commands
 from core.backend.turso.db import TursoDB
 logger = logging.getLogger(__name__)
+from discord import app_commands
 
+# @app_commands.command(name="say", description="bot says what you want it to say")
+# @app_commands.allowed_installs(users= True, guilds=False)
+# async def botsay(interaction: discord.Interaction, message: str):
+#     await interaction.response.send_message("Sent!", ephemeral=True)
+#     await interaction.channel.send(message)
 
 def create_bot(token: str, prefix: str):
     intents = discord.Intents.default()
@@ -14,6 +20,8 @@ def create_bot(token: str, prefix: str):
     bot = commands.Bot(command_prefix=prefix, intents=intents, help_command=None)
 
     async def setup_hook():
+        # bot.tree.add_command(botsay)
+        # await bot.tree.sync()  # Sync the command tree with Discord
         await TursoDB().init_db()
         print("Database and tables initialized")
         logger.info("Database and tables initialized")

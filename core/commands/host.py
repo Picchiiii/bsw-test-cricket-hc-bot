@@ -15,11 +15,13 @@ def host(bot: commands.Bot):
         #+ Add logic to add the match here
         match_instance = MatchInstance(bot, ctx)
         ctx.bot.active_matches[ctx.channel.id] = match_instance
-
-        await ctx.send(
+        join_match_view = JoinMatchView(match_instance, None)
+        join_message = await ctx.send(
             f"A match of hand cricket has been created by **{ctx.author.name}**. Click below or use {config.prefix}join to join the match.",
-            view=JoinMatchView(match_instance.players)
+            view=join_match_view
         )
+        join_match_view.message = join_message
+        
 
     @bot.command(name="check")
     async def check_match(ctx: commands.Context):
@@ -118,7 +120,7 @@ def host(bot: commands.Bot):
         match_instance = ctx.bot.active_matches.get(ctx.channel.id)
         if match_instance and (ctx.author.id == match_instance.host.id or match_instance.teamA_captain == ctx.author or match_instance.teamB_captain == ctx.author):
                 if team.lower() in ("a", "1"):
-                    if new_captain.id in match_instance.players:
+                    if new_captain in match_instance.players:
                         match_instance.teamA_captain = new_captain
                         await ctx.send(
                             f"Team A's captain has been changed to **{new_captain.name}**."
@@ -126,7 +128,7 @@ def host(bot: commands.Bot):
                     else:
                         await ctx.send("The new captain must be a player in the match.")
                 elif team.lower() in ("b", "2"):
-                    if new_captain.id in match_instance.players:
+                    if new_captain in match_instance.players:
                         match_instance.teamB_captain = new_captain
                         await ctx.send(
                             f"Team B's captain has been changed to **{new_captain.name}**."

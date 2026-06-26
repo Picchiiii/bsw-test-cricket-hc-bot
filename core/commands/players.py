@@ -1,5 +1,6 @@
 import discord
 import asyncio
+from discord import player
 from discord.ext import commands
 import logging
 from core.backend.instance import join_segregate_player, leave_segregate_player
@@ -12,9 +13,9 @@ def players(bot: commands.Bot):
         match_instance = ctx.bot.active_matches.get(ctx.channel.id)
         #= Add logic to ensure player is not able to join after match is started or the lobby is locked
         if match_instance and not match_instance.lobby_lock:
-            if ctx.author.id not in match_instance.players:
-                match_instance.players.append(ctx.author.id)
-                join_segregate_player(match_instance, ctx.author.id)
+            if ctx.author not in match_instance.players:
+                match_instance.players.append(ctx.author)
+                join_segregate_player(match_instance, ctx.author)
                 await ctx.send(
                     f"**{ctx.author.name}** has joined the game. <:correct:1519046913666715749>"
                 )
@@ -29,9 +30,9 @@ def players(bot: commands.Bot):
         match_instance = ctx.bot.active_matches.get(ctx.channel.id)
         
         if match_instance:
-            if ctx.author.id in match_instance.players:
-                match_instance.players.remove(ctx.author.id)
-                leave_segregate_player(match_instance, ctx.author.id)
+            if ctx.author in match_instance.players:
+                match_instance.players.remove(ctx.author)
+                leave_segregate_player(match_instance, ctx.author)
                 await ctx.send(
                     f"**{ctx.author.name}** has left the game."
                 )
@@ -59,8 +60,8 @@ def players(bot: commands.Bot):
                 team_a_value = (
                     "```\n" +
                     "\n".join(
-                        f"{i}. {ctx.guild.get_member(player_id).name}"
-                        for i, player_id in enumerate(match_instance.teamA, start=1)
+                        f"{i}. {player.name}"
+                        for i, player in enumerate(match_instance.teamA, start=1)
                     ) +
                     "\n```"
                 ) if match_instance.teamA else "```No players yet.```"
@@ -68,8 +69,8 @@ def players(bot: commands.Bot):
                 team_b_value = (
                     "```\n" +
                     "\n".join(
-                        f"{i}. {ctx.guild.get_member(player_id).name}"
-                        for i, player_id in enumerate(match_instance.teamB, start=1)
+                        f"{i}. {player.name}"
+                        for i, player in enumerate(match_instance.teamB, start=1)
                     ) +
                     "\n```"
                 ) if match_instance.teamB else "```No players yet.```"

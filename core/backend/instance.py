@@ -2,6 +2,7 @@ from discord.ext import commands
 import discord
 import asyncio
 import logging
+from collections import deque
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +25,7 @@ class MatchInstance:
         self.teamA_captain: discord.User = None
         self.teamB_captain: discord.User = None
         self.toss_winner: discord.User = None
-        self.TeamA_turn = None
+        self.teamA_turn = None
         self.curr_batsman: discord.User = None
         self.nxt_batsman: discord.User = None
         self.curr_bowler: discord.User = None
@@ -33,22 +34,24 @@ class MatchInstance:
         self.bowling_team = None
         self.batting_team_stats = {}
         self.bowling_team_stats = {}
+        # self.teamA_stats = {player_id: {"username": "", "runs_made": 0, "balls_faced": 0, "runs_conceded": 0, "balls_bowled": 0, "wickets": 0, "out":1} for player_id in self.players}
+        # self.teamB_stats = {player_id: {"username": "", "runs_made": 0, "balls_faced": 0, "runs_conceded": 0, "balls_bowled": 0, "wickets": 0, "out":1} for player_id in self.players}
         self.team_settings = { 'Team A name':'Team A' , 'Team B name':'Team B' }
 
         self.players_queue = []
         self.lobby_lock = False
+        self.game_started = False
         self.lock = asyncio.Lock()
 
 
-
-def join_segregate_player(match_instance: MatchInstance, player_id: int):
+def join_segregate_player(match_instance: MatchInstance, player: discord.User):
     if len(match_instance.teamA) <= len(match_instance.teamB):
-        match_instance.teamA.append(player_id)
+        match_instance.teamA.append(player)
     else:
-        match_instance.teamB.append(player_id)
+        match_instance.teamB.append(player)
 
-def leave_segregate_player(match_instance: MatchInstance, player_id: int):
-    if player_id in match_instance.teamA:
-        match_instance.teamA.remove(player_id)
-    elif player_id in match_instance.teamB:
-        match_instance.teamB.remove(player_id)
+def leave_segregate_player(match_instance: MatchInstance, player: discord.User):
+    if player in match_instance.teamA:
+        match_instance.teamA.remove(player)
+    elif player in match_instance.teamB:
+        match_instance.teamB.remove(player)

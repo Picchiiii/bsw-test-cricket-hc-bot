@@ -16,22 +16,7 @@ class BatBallView(discord.ui.View):
     @discord.ui.button(
         label="Bat",
         style=discord.ButtonStyle.green)
-    async def create_button(
-        self,
-        interaction: discord.Interaction,
-        button: discord.ui.Button
-    ):
-        if interaction.user.id != self.allowed_user.id:
-            await interaction.response.send_message(
-                "You are not allowed to make this choice.",
-                ephemeral=True
-            )
-            return    
-
-    @discord.ui.button(
-        label="Bowl",
-        style=discord.ButtonStyle.green)
-    async def create_button(
+    async def create_bat_button(
         self,
         interaction: discord.Interaction,
         button: discord.ui.Button
@@ -42,19 +27,34 @@ class BatBallView(discord.ui.View):
                 ephemeral=True
             )
             return
-        result = random.choice(["Heads", "Tails"])
-        if result.lower() == button.label.lower():
-            self.match_instance.toss_winner = self.allowed_user
-            return True
-        else:
-            return False
+        await interaction.response.defer()
+        await self.bat_or_bowl_choice(button)
+        await self.message.edit(view=None)
 
+    @discord.ui.button(
+        label="Bowl",
+        style=discord.ButtonStyle.green)
+    async def create_bowl_button(
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button
+    ):
+        if interaction.user.id != self.allowed_user.id:
+            await interaction.response.send_message(
+                "You are not allowed to make this choice.",
+                ephemeral=True
+            )
+            return
+        await interaction.response.defer()
+        await self.bat_or_bowl_choice(button)
+        await self.message.edit(view=None)
+        
     async def bat_or_bowl_choice(self, button: discord.ui.Button):
         if button.label.lower() == "bat":
             self.match_instance.batting_team = self.match_instance.toss_winner
             self.match_instance.bowling_team = self.match_instance.teamA_captain if self.match_instance.toss_winner == self.match_instance.teamB_captain else self.match_instance.teamB_captain
-            await self.message.reply(f"Team {self.match_instance.teamA_name if self.match_instance.toss_winner == self.match_instance.teamA_captain else self.match_instance.teamB_name} has decided to bat first. Use `.s` to start the match.")
+            await self.message.reply(f"Team {self.match_instance.team_settings['Team A name'] if self.match_instance.toss_winner == self.match_instance.teamA_captain else self.match_instance.team_settings['Team B name']} has decided to bat first. Use `.s` to start the match.")
         else:
             self.match_instance.bowling_team = self.match_instance.toss_winner
             self.match_instance.batting_team = self.match_instance.teamA_captain if self.match_instance.toss_winner == self.match_instance.teamB_captain else self.match_instance.teamB_captain
-            await self.message.reply(f"Team {self.match_instance.teamA_name if self.match_instance.toss_winner == self.match_instance.teamA_captain else self.match_instance.teamB_name} has decided to bowl first. Use `.s` to start the match.")
+            await self.message.reply(f"Team {self.match_instance.team_settings['Team A name'] if self.match_instance.toss_winner == self.match_instance.teamA_captain else self.match_instance.team_settings['Team B name']} has decided to bowl first. Use `.s` to start the match.")
