@@ -18,8 +18,7 @@ def main():
 
     bot = create_bot(TOKEN, config.prefix)
     load_commands(bot)
-    bot.run(TOKEN)
-
+    bot.run(TOKEN)    
 
 if __name__ == "__main__":
     main()

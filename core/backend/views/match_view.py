@@ -20,7 +20,7 @@ class JoinMatchView(discord.ui.View):
         interaction: discord.Interaction,
         button: discord.ui.Button
     ):
-        if interaction.user.id not in self.match_instance.players:
+        if interaction.user not in self.match_instance.players:
             await interaction.response.defer()  
             self.match_instance.players.append(interaction.user)
             join_segregate_player(self.match_instance, interaction.user)

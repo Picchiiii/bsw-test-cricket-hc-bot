@@ -3,7 +3,7 @@ import discord
 from discord.ext import commands
 from core.backend.turso.db import TursoDB
 logger = logging.getLogger(__name__)
-from discord import app_commands
+# from discord import app_commands
 
 # @app_commands.command(name="say", description="bot says what you want it to say")
 # @app_commands.allowed_installs(users= True, guilds=False)

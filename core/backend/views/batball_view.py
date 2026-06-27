@@ -48,13 +48,31 @@ class BatBallView(discord.ui.View):
         await interaction.response.defer()
         await self.bat_or_bowl_choice(button)
         await self.message.edit(view=None)
+
         
     async def bat_or_bowl_choice(self, button: discord.ui.Button):
+        toss_winner_is_teamA = (
+            self.match_instance.toss_winner == self.match_instance.teamA_captain
+        )
+
         if button.label.lower() == "bat":
-            self.match_instance.batting_team = self.match_instance.toss_winner
-            self.match_instance.bowling_team = self.match_instance.teamA_captain if self.match_instance.toss_winner == self.match_instance.teamB_captain else self.match_instance.teamB_captain
-            await self.message.reply(f"Team {self.match_instance.team_settings['Team A name'] if self.match_instance.toss_winner == self.match_instance.teamA_captain else self.match_instance.team_settings['Team B name']} has decided to bat first. Use `.s` to start the match.")
+            # Toss winner bats
+            self.match_instance.batting_turn = "A" if toss_winner_is_teamA else "B"
+            self.match_instance.bowling_turn = "B" if toss_winner_is_teamA else "A"
+            decision = "bat"
+
         else:
-            self.match_instance.bowling_team = self.match_instance.toss_winner
-            self.match_instance.batting_team = self.match_instance.teamA_captain if self.match_instance.toss_winner == self.match_instance.teamB_captain else self.match_instance.teamB_captain
-            await self.message.reply(f"Team {self.match_instance.team_settings['Team A name'] if self.match_instance.toss_winner == self.match_instance.teamA_captain else self.match_instance.team_settings['Team B name']} has decided to bowl first. Use `.s` to start the match.")
+            # Toss winner bowls, so the other team bats
+            self.match_instance.batting_turn = "B" if toss_winner_is_teamA else "A"
+            self.match_instance.bowling_turn = "A" if toss_winner_is_teamA else "B"
+            decision = "bowl"
+
+        toss_winner_name = (
+            self.match_instance.team_settings["Team A name"]
+            if toss_winner_is_teamA
+            else self.match_instance.team_settings["Team B name"]
+        )
+
+        await self.message.reply(
+            f"Team {toss_winner_name} has decided to {decision} first. Use `.s` to start the match."
+        )

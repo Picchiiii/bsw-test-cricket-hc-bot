@@ -2,7 +2,6 @@ from discord.ext import commands
 import discord
 import asyncio
 import logging
-from collections import deque
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +31,8 @@ class MatchInstance:
         self.nxt_bowler: discord.User = None
         self.batting_team = None
         self.bowling_team = None
+        self.batting_turn = None
+        self.bowling_turn = None
         self.batting_team_stats = {}
         self.bowling_team_stats = {}
         # self.teamA_stats = {player_id: {"username": "", "runs_made": 0, "balls_faced": 0, "runs_conceded": 0, "balls_bowled": 0, "wickets": 0, "out":1} for player_id in self.players}

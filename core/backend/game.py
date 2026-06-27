@@ -12,6 +12,16 @@ class Game:
         self.ctx = ctx
         self.match_instance = match_instance
 
+        self.teams = {
+            "A": self.TeamA,
+            "B": self.TeamB,
+        }
+
+        self.captains = {
+            "A": self.match_instance.teamA_captain,
+            "B": self.match_instance.teamB_captain,
+        }
+
 
     async def initialise(self):
         self.match_instance.game_started = True
@@ -54,18 +64,30 @@ class Game:
 
         dict_b.update( {'name': self.match_instance.team_settings['Team B name'], 'runs': 0, 'balls': 0, 'wickets': 0} )
         self.TeamB = dict_b
-        self.match_instance.batting_team = self.match_instance.teamA if self.match_instance.teamA_turn == 'bat' else self.match_instance.teamB
-        self.match_instance.bowling_team = self.match_instance.teamA if self.match_instance.teamA_turn == 'bowl' else self.match_instance.teamB
+        #  Converted the teams into a list 
+        # self.match_instance.batting_team = self.match_instance.teamA if self.match_instance.teamA_turn == 'bat' else self.match_instance.teamB
+        # self.match_instance.bowling_team = self.match_instance.teamA if self.match_instance.teamA_turn == 'bowl' else self.match_instance.teamB
 
     async def start_game(self):
         await self.initialise()
-        await self.ctx.send("The match has started! :cricket_bat_and_ball:")
-        player_data = self.match_instance.batting_team_stats
-        player_view = PlayerView("batsman", player_data)
-        batting_team_captain = self.match_instance.teamA_captain if self.match_instance.batting_team == self.match_instance.teamA else self.match_instance.teamB_captain
-        await self.ctx.send(f"{batting_team_captain.mention}, Select your next player:", view=player_view)
+        await self.ctx.send("The match has started!")
+        self.next_batsman()
+        self.next_bowler()
 
-    
+    async def next_batsman(self):
+        batting_players_data = self.teams[self.match_instance.batting_turn]
+        batting_team_captain = self.captains[self.match_instance.batting_turn]
+        player_view = PlayerView("batsman", batting_players_data)
+        await self.ctx.send(
+            f"{batting_team_captain.mention}, Select your next player:",
+            view=player_view
+        )
 
-    async def next_batsman(self, player_data: dict):
-        player_view = PlayerView("batsman", player_data)
+    async def next_bowler(self):
+        bowling_players_data = self.teams[self.match_instance.bowling_turn]
+        bowling_team_captain = self.captains[self.match_instance.bowling_turn]
+        player_view = PlayerView("bowler", bowling_players_data)
+        await self.ctx.send(
+            f"{bowling_team_captain.mention}, Select your next bowler:",
+            view=player_view
+        )

@@ -8,7 +8,9 @@ class PlayerSelect(discord.ui.Select):
         for player_id, player in player_data.items():
             if not isinstance(player_id, int):
                 continue
-            performance = get_performance(type, player_id)
+
+            performance = get_performance(type, player)
+
             options.append(
                 discord.SelectOption(
                     label=player["player_name"],
