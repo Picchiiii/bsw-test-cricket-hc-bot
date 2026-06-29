@@ -1,8 +1,7 @@
 import discord
 from discord.ext import commands
 import logging
-import random
-
+from core import config
 logger = logging.getLogger(__name__)
 
 
@@ -74,5 +73,5 @@ class BatBallView(discord.ui.View):
         )
 
         await self.message.reply(
-            f"Team {toss_winner_name} has decided to {decision} first. Use `.s` to start the match."
+            f"Team {toss_winner_name} has decided to {decision} first. Use `{config.BOT_PREFIX}start` to start the match."
         )

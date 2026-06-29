@@ -71,6 +71,18 @@ def host(bot: commands.Bot):
         else:
             await ctx.send("No active match in this channel.")
 
+    @bot.command(name="show", aliases=["sho"])
+    async def show_match_info(ctx: commands.Context, param: str):
+        if ctx.channel.id not in ctx.bot.active_matches:
+            await ctx.send("No active match in this channel.")
+            return
+        
+        match_instance = ctx.bot.active_matches.get(ctx.channel.id)
+        embed = discord.Embed(title=f"{param.capitalize()} Information", 
+                              description=f"Here is the {param.lower()} information for the active match.\n\n{getattr(match_instance, param, 'Information not available.')}",
+                              color=discord.Color.blue())
+
+        await ctx.send(embed=embed)
 
     @bot.command(name="yeet", aliases=["y"])
     async def yeet_match(ctx: commands.Context):

@@ -5,7 +5,7 @@ def get_performance(type: str, player_data: dict):
         runs = player_data["runs"]
         balls = player_data["balls"]
         strike_rate = (runs / balls) * 100 if balls > 0 else 0
-        performance = f"{runs} Runs, {balls} Balls, {strike_rate:.2f} Strike Rate"
+        performance = f"{runs}r, {balls}b, {strike_rate:.2f}sr"
     elif type == "bowler":
         balls = player_data["balls_given"]
         overs = balls // 6
@@ -16,7 +16,7 @@ def get_performance(type: str, player_data: dict):
         wickets = player_data["wickets"]
         Economy = runs / (balls / 6) if balls > 0 else 0
 
-        performance = f"{overs_bowled} Overs, {runs} Runs, {wickets} Wickets, {Economy:.2f} Economy"
+        performance = f"{overs_bowled}o, {runs}r, {wickets}w, {Economy:.2f}eco"
     else:
         performance = "Invalid player type. Must be 'batsman' or 'bowler'."
 

@@ -16,7 +16,6 @@ def match(bot: commands.Bot):
         if match_instance:
             if ctx.author.id == match_instance.host.id:
                 user: discord.Member = random.choice([match_instance.teamA_captain, match_instance.teamB_captain])
-                print(f"chosen user: {user.name}")
                 toss_view = TossView(match_instance, None, user)
                 toss_message = await ctx.send(f"Starting the toss! **{match_instance.team_settings['Team A name'] if user == match_instance.teamA_captain else match_instance.team_settings['Team B name']}** captain {user.mention} choose Heads or Tails.", view=toss_view)
                 toss_view.message = toss_message

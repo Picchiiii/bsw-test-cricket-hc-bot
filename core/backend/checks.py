@@ -4,7 +4,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-class GameChecks:
+class GameChecks():
 
     @staticmethod
     async def is_host(ctx: commands.Context):
@@ -45,3 +45,9 @@ class GameChecks:
             else:
                 await ctx.send("Only the toss winner can perform this action.")
                 return False
+
+
+    # @staticmethod
+    # async def game_continue_check(channel_id: int):
+    #     match_instance = commands.Bot.active_matches.get(channel_id)
+    #     if match_instance

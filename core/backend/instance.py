@@ -17,6 +17,8 @@ class MatchInstance:
         self.score = 0
         self.overs = 0
         self.wickets = 0
+        self.no_of_days = 1
+        self.crr_day = 1
         self.innings = 1
         self.result = None
         self.target = None
@@ -38,7 +40,7 @@ class MatchInstance:
         # self.teamA_stats = {player_id: {"username": "", "runs_made": 0, "balls_faced": 0, "runs_conceded": 0, "balls_bowled": 0, "wickets": 0, "out":1} for player_id in self.players}
         # self.teamB_stats = {player_id: {"username": "", "runs_made": 0, "balls_faced": 0, "runs_conceded": 0, "balls_bowled": 0, "wickets": 0, "out":1} for player_id in self.players}
         self.team_settings = { 'Team A name':'Team A' , 'Team B name':'Team B' }
-
+        self.match_settings = { 'overs': 5, 'days': 1 }
         self.players_queue = []
         self.lobby_lock = False
         self.game_started = False

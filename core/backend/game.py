@@ -4,24 +4,13 @@ import logging
 from core.backend.instance import MatchInstance
 from core.backend.dropdown.player_select import PlayerView
 from collections import deque
-
+from core.backend.checks import GameChecks
 logger = logging.getLogger(__name__)
 
 class Game:
     def __init__(self, ctx: commands.Context, match_instance: MatchInstance):
         self.ctx = ctx
         self.match_instance = match_instance
-
-        self.teams = {
-            "A": self.TeamA,
-            "B": self.TeamB,
-        }
-
-        self.captains = {
-            "A": self.match_instance.teamA_captain,
-            "B": self.match_instance.teamB_captain,
-        }
-
 
     async def initialise(self):
         self.match_instance.game_started = True
@@ -67,27 +56,51 @@ class Game:
         #  Converted the teams into a list 
         # self.match_instance.batting_team = self.match_instance.teamA if self.match_instance.teamA_turn == 'bat' else self.match_instance.teamB
         # self.match_instance.bowling_team = self.match_instance.teamA if self.match_instance.teamA_turn == 'bowl' else self.match_instance.teamB
+        self.teams = {
+            "A": self.TeamA,
+            "B": self.TeamB,
+        }
+
+        self.captains = {
+            "A": self.match_instance.teamA_captain,
+            "B": self.match_instance.teamB_captain,
+        }
 
     async def start_game(self):
         await self.initialise()
         await self.ctx.send("The match has started!")
-        self.next_batsman()
-        self.next_bowler()
+        await self.next_batsman()
+        await self.next_bowler()    
+
 
     async def next_batsman(self):
         batting_players_data = self.teams[self.match_instance.batting_turn]
+        not_out_players = {
+            pid: pdata
+            for pid, pdata in batting_players_data.items()
+            if isinstance(pid, int) and not pdata["is_out"]
+        }
         batting_team_captain = self.captains[self.match_instance.batting_turn]
-        player_view = PlayerView("batsman", batting_players_data)
-        await self.ctx.send(
-            f"{batting_team_captain.mention}, Select your next player:",
+        player_view = PlayerView("batsman", not_out_players)
+        message = await self.ctx.send(
+            f"{batting_team_captain.mention}, Select your next batsman:",
             view=player_view
         )
+        player_view.message = message  
 
     async def next_bowler(self):
         bowling_players_data = self.teams[self.match_instance.bowling_turn]
         bowling_team_captain = self.captains[self.match_instance.bowling_turn]
         player_view = PlayerView("bowler", bowling_players_data)
-        await self.ctx.send(
+        message = await self.ctx.send(
             f"{bowling_team_captain.mention}, Select your next bowler:",
             view=player_view
         )
+        player_view.message = message
+
+    
+
+    async def continue_game(self):
+        while await GameChecks.game_continue_check(self.ctx.channel.id):
+            await self.next_batsman()
+            await self.next_bowler()

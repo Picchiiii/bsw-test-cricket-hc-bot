@@ -60,12 +60,19 @@ class TossView(discord.ui.View):
     async def decide_toss_winner(self, button: discord.ui.Button):
         batballview = BatBallView(self.match_instance, None, self.allowed_user)
         result = random.choice(["Heads", "Tails"])
+        is_teamA = self.allowed_user == self.match_instance.teamA_captain
+
+        team_name = (
+            self.match_instance.team_settings["Team A name"]
+            if is_teamA else
+            self.match_instance.team_settings["Team B name"]
+        )
         if result.lower() == button.label.lower():
             self.match_instance.toss_winner = self.allowed_user
-            batball_message = await self.message.reply(f"Team {self.match_instance.team_settings['Team A name']if self.allowed_user == self.match_instance.teamA_captain else self.match_instance.team_settings['Team B name']} won the toss! {self.match_instance.team_settings['Team A name'] if self.allowed_user == self.match_instance.teamA_captain else self.match_instance.team_settings['Team B name']} captain {self.allowed_user.mention} Choose Bat or Bowl", view=batballview)
+            batball_message = await self.message.reply(f"**{team_name}** won the toss! {self.match_instance.team_settings['Team A name'] if self.allowed_user == self.match_instance.teamA_captain else self.match_instance.team_settings['Team B name']} captain {self.allowed_user.mention} Choose Bat or Bowl", view=batballview)
             batballview.message = batball_message
         else:
             self.match_instance.toss_winner = self.match_instance.teamA_captain if self.allowed_user == self.match_instance.teamB_captain else self.match_instance.teamB_captain
-            batball_message = await self.message.reply(f"Team {self.match_instance.team_settings['Team B name'] if self.allowed_user == self.match_instance.teamA_captain else self.match_instance.team_settings['Team A name']} lost the toss! {self.match_instance.team_settings['Team B name'] if self.allowed_user == self.match_instance.teamA_captain else self.match_instance.team_settings['Team A name']} captain {self.allowed_user.mention} Choose Bat or Bowl", view=batballview)
+            batball_message = await self.message.reply(f"**{team_name}** lost the toss! {self.match_instance.team_settings['Team A name'] if self.allowed_user == self.match_instance.teamA_captain else self.match_instance.team_settings['Team B name']} captain {self.allowed_user.mention} Choose Bat or Bowl", view=batballview)
             batballview.message = batball_message
         
