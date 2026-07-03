@@ -1,8 +1,5 @@
 # discord
 discord.py>=2.4.0
 
-# turso — async libsql client
-libsql-client>=0.3.1
-
 # config / env
 python-dotenv>=1.0.0

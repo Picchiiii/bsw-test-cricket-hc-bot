@@ -47,7 +47,18 @@ class GameChecks():
                 return False
 
 
-    # @staticmethod
-    # async def game_continue_check(channel_id: int):
-    #     match_instance = commands.Bot.active_matches.get(channel_id)
-    #     if match_instance
+    @staticmethod
+    async def game_continue_check(match_instance):
+        ## At this point match_instance.game_started will always be True so leaving that condition as it is
+        game_over_condns = [
+            match_instance.game_started == False, ## remove later
+            match_instance.innings > 4, # Match gets over after 4th innings
+            match_instance.score >= match_instance.target and match_instance.innings == 2, # target is reached by the team
+            match_instance.innings == 1 and match_instance.overs >= match_instance.match_settings['overs'],
+            match_instance.innings == 2 and match_instance.overs >= match_instance.match_settings['overs'],
+            match_instance.crr_day > match_instance.match_settings['days'],
+            match_instance.wickets >= (len(match_instance.players))/2
+        ]
+
+
+        return not any(game_over_condns)

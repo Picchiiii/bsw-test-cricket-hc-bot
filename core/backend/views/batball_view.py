@@ -73,5 +73,5 @@ class BatBallView(discord.ui.View):
         )
 
         await self.message.reply(
-            f"Team {toss_winner_name} has decided to {decision} first. Use `{config.BOT_PREFIX}start` to start the match."
+            f"Team {toss_winner_name} has decided to {decision} first. Use `{config.prefix}start` to start the match."
         )
