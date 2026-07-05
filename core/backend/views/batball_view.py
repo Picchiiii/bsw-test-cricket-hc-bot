@@ -1,7 +1,7 @@
 import discord
 from discord.ext import commands
 import logging
-from core import config
+from core.config import config
 logger = logging.getLogger(__name__)
 
 

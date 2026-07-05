@@ -7,6 +7,7 @@ from core.backend.instance import MatchInstance
 from core.backend.dropdown.player_select import PlayerView
 from collections import deque
 from core.backend.checks import GameChecks
+from core.backend.innings import Innings
 
 logger = logging.getLogger(__name__)
 
@@ -14,41 +15,18 @@ class Game:
     def __init__(self, ctx: commands.Context, match_instance: MatchInstance):
         self.ctx = ctx
         self.mi = match_instance
+        self.emoji_map ={
+                        "0": "<:zero:1523349130934489201>",
+                        "1": "<:one:1523349128724218007>",
+                        "2": "<:two:1523349126425612513>",
+                        "3": "<:three:1523349122378235904>",
+                        "4": "<:four:1523349119643685056>",
+                        "5": "<:five:1523349117252665384>",
+                        "6": "<:six:1523349115289997362>",
+                        "W": "<:w_:1523349110290120856>",
+                        "NB": "<:nb:1523349112471158965>"
+                    }
 
-
-
-    def generate_scorecard_embed(self):
-
-        description = f"""**{self.mi.team_settings['Team A name']} v/s {self.mi.team_settings['Team B name']}**\n
-                    **Day {self.mi.crr_day} | Innings {self.mi.innings}**\n
-                    -# {self.mi.team_settings['Team A name'] if self.mi.toss_winner == self.mi.teamA_captain else self.mi.team_settings['Team B name']} won the toss and elected to {"Bat" if self.mi.match_settings['team_batting_first'] == "bat" else "Bowl"}\n\n
-
-                    `BSW 1st Innings 204/3d (40.1)`\n
-                    # RB 247/2 (64.2) \n
-                    RB lead by 43 runs\n
-                    -# CRR: 3.92\n\n
-
-                    -# Last Wicket: picchiii - 66/2 at 13.2 overs\n
-                    -# Last 10 Overs: 35 Runs, 0 wkts\n\n
-
-                    `Batter`\n
-                    ```ansi
-                    [1;37msudarshan[0m
-                    104(184) | 56.52 SR
-                    ```\n
-                    `Bowler`\n
-                    ```ansi
-                    [1;37mpicchi[0m
-                    1-63 (23.2) | 2.74 ECO
-                    ```\n
-                    """
-        embed = discord.Embed(title=f"MATCH SUMMARY", 
-                              description=description,
-                              color=discord.Color.blue())
-        embed.add_field(name="Timeline", value=f"{self.mi.timeline_logdisplay}", inline=False)
-        embed.add_field(name="FOW", value=f"{self.mi.teamA_scores['inning_one']['FOW']}", inline=False)
-        embed.set_footer(text=f"Overs left today {self.mi.overs - self.mi.balls_this_over// 6} | Overs left in match {self.mi.match_settings['overs'] - self.mi.overs // 6}")
-        return embed
 
     async def initialise(self):
         self.mi.game_started = True 
@@ -104,10 +82,245 @@ class Game:
             "B": self.mi.teamB_captain,
         }
 
+
+    def generate_scorecard_embed(self):
+
+        description = f"""**{self.mi.team_settings['Team A name']} v/s {self.mi.team_settings['Team B name']}**\n**Day {self.mi.crr_day} | Innings {self.mi.innings}**\n{self.compute_scorecard()}\n`Batter`\n```ansi\n[1;37m{self.mi.curr_batsman.name}[0m\n{self.mi.current_batter_stats["runs"]}({self.mi.current_batter_stats["balls"]}) | {(self.mi.current_batter_stats['runs'] / self.mi.current_batter_stats['balls'] * 100) if self.mi.current_batter_stats['balls'] else 0:.2f} SR"```\n`Bowler`\n```ansi\n[1;37m{self.mi.curr_bowler.name}[0m\n{self.mi.current_bowler_stats['wickets']}-{self.mi.current_bowler_stats['runs_given']} ({self.mi.current_bowler_stats['balls_given']//6}.{self.mi.current_bowler_stats['balls_given']%6}) | {(self.mi.current_bowler_stats['runs_given']/self.mi.current_bowler_stats['balls_given'] * 6) if self.mi.current_bowler_stats['balls_given'] > 0 else 0:.2f} ECO"```\n"""
+        embed = discord.Embed(title=f"MATCH SUMMARY", 
+                              description=description,
+                              color=0xf6dc9a)
+        embed.add_field(name="Timeline", value=f"{self.format_timeline()}", inline=False)
+        if self.mi.wickets > 0:
+            embed.add_field(name="FOW", value=f"{self.format_fow()}", inline=False)
+        embed.set_footer(text=f"Overs left today {self.mi.overs - self.mi.balls_this_over// 6} | Overs left in match {self.mi.match_settings['overs'] - self.mi.overs // 6}")
+        return embed
+
+    def format_timeline(self):
+        output = []
+
+        for line in self.mi.timeline_logdisplay:  # line 0 → 10
+            for item in line:  # oldest → newest
+                if not item:
+                    continue
+
+                parts = str(item).split("|")
+
+                for p in parts:
+                    if not p:
+                        continue
+
+                    output.append(self.emoji_map.get(p, p))
+
+        return " | ".join(output)
+    
+    def format_fow(self):
+        output = []
+        index = 1
+
+        for wicket_line in self.mi.fow:
+            for item in wicket_line:
+                if not item:
+                    continue
+
+                # item format: "66/2 at 13.2"
+                parts = str(item).split(" at ")
+
+                if len(parts) != 2:
+                    continue
+
+                score_part = parts[0]        # "66/2"
+                overs_part = parts[1]        # "13.2"
+
+                runs = score_part.split("/")[0]  # "66"
+
+                output.append(f"{index}- {runs} ({overs_part})")
+                index += 1
+
+        return "\n".join(output)
+    
+    def ordinal(self, n):
+        if 10 <= n % 100 <= 20:
+            suffix = "th"
+        else:
+            suffix = {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
+        return f"{n}{suffix}"
+
+
+    def main_score_calc(self):
+        lines = []
+
+        for i, innings in enumerate(self.mi.innings_history.values(), start=1):
+            team_name = innings.get("team_name")
+            score = innings.get("score")
+
+            # Skip empty innings
+            if not team_name or not score:
+                continue
+
+            lines.append(f"`{team_name} {self.ordinal(i)} Innings {score}`")
+
+        past_innings = "\n".join(lines)
+        return past_innings
+    
+    def lead_trail_or_target(self):
+        if self.mi.innings == 1:
+            return f"{self.mi.team_settings['Team A name'] if self.mi.toss_winner == self.mi.teamA_captain else self.mi.team_settings['Team B name']} won the toss and elected to {"Bat" if self.mi.match_settings['team_batting_first'] == "bat" else "Bowl" } first."
+        elif self.mi.innings == 2:
+            if self.mi.batting_team == "A":
+                lead = self.mi.teamA_scores['inning_one']['runs'] - self.mi.teamB_scores['inning_one']['runs']
+                if lead > 0:
+                    return f"{self.mi.batting_team} lead by {lead} runs."
+                elif lead < 0:
+                    if self.mi.wickets >= (len(self.mi.players))/4:
+                        return f"{self.mi.batting_team} trail by {abs(lead)} runs. | {self.follow_on_check()[1] + ' left to avoid follow-on' if self.follow_on_check()[0] else ''} {len(self.mi.players)/4 - self.mi.wickets} wickets remaining."
+                else:
+                    return "The match is currently tied."
+            else:
+                lead = self.mi.teamB_scores['inning_one']['runs'] - self.mi.teamA_scores['inning_one']['runs']
+                if lead > 0:
+                    return f"{self.mi.batting_team} lead by {lead} runs."
+                elif lead < 0:
+                    if self.mi.wickets >= (len(self.mi.players))/4:
+                        return f"{self.mi.batting_team} trail by {abs(lead)} runs. | {self.follow_on_check()[1] + ' left to avoid follow-on' if self.follow_on_check()[0] else ''}, {len(self.mi.players)/4 - self.mi.wickets} wickets remaining."
+                    return f"{self.mi.batting_team} trail by {abs(lead)} runs."
+                else:
+                    return "The match is currently tied."
+                
+        elif self.mi.innings == 3:
+            if self.mi.batting_team == "A":
+                lead = self.mi.teamA_scores['inning_one']['runs'] + self.mi.teamA_scores['inning_two']['runs'] - self.mi.teamB_scores['inning_one']['runs'] - self.mi.teamB_scores['inning_two']['runs']
+                if lead > 0:
+                    return f"{self.mi.batting_team} lead by {lead} runs."
+                elif lead < 0:
+                    if self.mi.wickets >= (len(self.mi.players))/4:
+                        return f"{self.mi.batting_team} trail by {abs(lead)} runs. | {len(self.mi.players)/2 - self.mi.wickets} wickets remaining."
+                    return f"{self.mi.batting_team} trail by {abs(lead)} runs."
+                else:
+                    return "The match is currently tied."
+            else:
+                lead = self.mi.teamB_scores['inning_one']['runs'] + self.mi.teamB_scores['inning_two']['runs'] - self.mi.teamA_scores['inning_one']['runs'] - self.mi.teamA_scores['inning_two']['runs']
+                if lead > 0:
+                    return f"{self.mi.batting_team} lead by {lead} runs."
+                elif lead < 0:
+                    if self.mi.wickets >= (len(self.mi.players))/4:
+                        return f"{self.mi.batting_team} trail by {abs(lead)} runs. | {len(self.mi.players)/2 - self.mi.wickets} wickets remaining."
+                    return f"{self.mi.batting_team} trail by {abs(lead)} runs."
+                else:
+                    return "The match is currently tied."
+                
+        elif self.mi.innings == 4:
+            if self.mi.batting_team == "A":
+                target = self.mi.teamA_scores['inning_one']['runs'] + self.mi.teamA_scores['inning_two']['runs'] - self.mi.teamB_scores['inning_one']['runs'] - self.mi.teamB_scores['inning_two']['runs'] + 1
+                if target > 0:
+                    return f"{self.mi.batting_team} needs {abs(target)} more runs to win, with {len(self.mi.players)/2 - self.mi.wickets} wickets remaining."
+                else:
+                    return "The match is currently tied."
+            else:
+                target = self.mi.teamA_scores['inning_one']['runs'] + self.mi.teamA_scores['inning_two']['runs'] - self.mi.teamB_scores['inning_one']['runs'] - self.mi.teamB_scores['inning_two']['runs'] + 1
+                if target > 0:
+                    return f"{self.mi.batting_team} needs {abs(target)} more runs to win, with {len(self.mi.players)/2 - self.mi.wickets} wickets remaining."
+                else:
+                    return "The match is currently tied."
+    
+    def follow_on_check(self):
+        inning_one_score = self.mi.innings_history["innings_1"]["score"]
+        inning_one_runs = int(inning_one_score.split("/")[0])
+        if self.mi.score < inning_one_runs/2:
+            left_to_avoid_follow_on = (inning_one_runs/2) - self.mi.score
+            return True, left_to_avoid_follow_on
+        return False, ""
+    
+    def over_history(self):
+        total_runs = 0
+        total_wickets = 0
+
+        for over in self.mi.ten_over_history:
+            for entry in over:   # FIX: iterate full deque, not just [0]
+                if not entry:
+                    continue
+
+                try:
+                    runs, wickets = str(entry).split("/")
+                    total_runs += int(runs)
+                    total_wickets += int(wickets)
+                except:
+                    continue
+
+        return total_runs, total_wickets
+
+    def compute_scorecard(self):
+        past_innings = self.main_score_calc()
+        current_innings = f"{self.mi.team_settings['Team A name']} {self.mi.score}/{self.mi.wickets} ({self.mi.overs}.{self.mi.balls_this_over % 6})"
+
+        lead_trail_or_target = self.lead_trail_or_target()
+
+        crr = (
+            f"CRR: {self.mi.score / (self.mi.overs + self.mi.balls_this_over / 6):.2f}"
+            if self.mi.overs + self.mi.balls_this_over / 6 > 0
+            else "CRR: 0.00"
+        )
+
+        # ---------------- Last Wicket ----------------
+        last_wicket = None
+
+        if self.mi.wickets > 0 and self.mi.fow:
+            fow_entry = list(self.mi.fow[self.mi.wickets - 1])[-1]
+
+            if fow_entry:
+                score_part, overs_part = str(fow_entry).split(" at ")
+                runs = score_part.split("/")[0]
+
+                last_wicket = (
+                    f"Last Wicket: {self.mi.last_wicket.name} - {runs} ({overs_part})"
+                )
+
+        # ---------------- Last 10 Overs ----------------
+        over_history = None
+
+        if self.mi.overs > 5 and self.mi.ten_over_history:
+            last_over = None
+
+            for over in reversed(self.mi.ten_over_history):
+                if over and over[-1]:
+                    last_over = over[-1]
+                    break
+
+            if last_over:
+                try:
+                    runs, wickets = str(last_over).split("/")
+                    over_history = (
+                        f"Last {min(int(self.mi.overs), 10)} Overs: "
+                        f"{runs} Runs, {wickets} Wickets"
+                    )
+                except Exception:
+                    pass
+
+        # ---------------- Build Output ----------------
+        lines = []
+
+        if past_innings:
+            lines.append(past_innings)
+
+        lines.append(f"# {current_innings}")
+
+        if lead_trail_or_target:
+            lines.append(f"-# {lead_trail_or_target}")
+
+        lines.append(f"-# {crr}")
+
+        if last_wicket:
+            lines.append(f"-# {last_wicket}")
+
+        if over_history:
+            lines.append(f"-# {over_history}")
+
+        return "\n".join(lines)
+
     async def start_game(self):
-        await self.initialise()
-        await self.ctx.send("The match has started!")
         await GameChecks.game_continue_check(self.mi)
+
+        innings = Innings(self.ctx, self.mi)
+        await innings.one.start_first_innings()
 
 
     async def next_batsman(self):
@@ -135,8 +348,6 @@ class Game:
         )
         player_view.message = message
 
-        await player_view.wait() # wait for selection for 15 seconds
-
     async def countdown(self, messages, duration=30, interval=5):
         remaining = duration
 
@@ -158,7 +369,7 @@ class Game:
         batsman = self.mi.curr_batsman
         bowler = self.mi.curr_bowler
 
-        if self.mi.balls_this_over == 0 and self.mi.curr_batter_stats["balls"] == 0:
+        if self.mi.balls_this_over == 0 and self.mi.current_batter_stats["balls"] == 0:
             
             bat_message = await batsman.send("Put your input\n⏳ 30 seconds remaining.")
             bowl_message = await bowler.send("Put your input\n⏳ 30 seconds remaining.")
@@ -186,7 +397,7 @@ class Game:
 
         return bat_response, bowl_response
 
-    async def request_ball(self, ctx: commands.Context):
+    async def request_ball(self):
 
         valid_responses = {0,1,2,3,4,5,6}
 
@@ -216,7 +427,7 @@ class Game:
 
 
             # VALID INPUT
-        return bat_response, bowl_response
+        await self.resolve_ball(int(bat_response), int(bowl_response))
 
     async def wait_for_response(self, player, message, timeout=30):
 
@@ -239,13 +450,6 @@ class Game:
         except asyncio.TimeoutError:
             return None
 
-    async def continue_game(self):
-        while await GameChecks.game_continue_check(self.mi):
-            await self.next_batsman()
-            await self.next_bowler()
-
-            if not await GameChecks.game_continue_check(self.mi):
-                break
 
     async def resolve_ball(self, bat_response, bowl_response):
         if bowl_response == 0:
@@ -254,20 +458,24 @@ class Game:
             self.mi.current_bowler_stats["runs_given"] += 1
             self.mi.current_bowler_stats["timeline"].append("NB")
             self.mi.current_bowler_stats["last_action"] = "NB"
+            self.add_timeline_entry("NB")
             # bowler cannot choose 0
             # Handle the case where the bowler chose 0
             await self.ctx.send("The bowler cannot choose 0. The batsman scores runs!")
         elif bat_response == bowl_response:
             self.dismiss_batsman(bat_response)
+            self.add_timeline_entry("W")
         elif bat_response == 0:
             if self.mi.zeros_by_batsman == 4 :
                 self.dismiss_batsman(bat_response)
                 return
             await self.add_score(0)
+            self.add_timeline_entry("0")
             self.mi.zeros_by_batsman += 1
         else:
             await self.add_score(int(bat_response))
-        
+            self.add_timeline_entry(str(int(bat_response)))
+
     async def dismiss_batsman(self, bat_response):
             self.mi.wickets += 1
             self.mi.balls_this_over += 1
@@ -279,6 +487,15 @@ class Game:
             self.mi.current_bowler_stats["last_action"] = bat_response
             self.mi.current_batter_stats["last_action"] = bat_response
 
+    def add_timeline_entry(self, entry):
+        for line in self.mi.timeline_logdisplay:
+            if len(line) < line.maxlen:
+                line.append(entry)
+                return
+
+        # If all lines are full, remove the oldest entry from the first line and add the new entry
+        self.mi.timeline_logdisplay[0].popleft()
+        self.mi.timeline_logdisplay[0].append(entry)
 
     async def add_score(self, runs):
         self.mi.score += runs

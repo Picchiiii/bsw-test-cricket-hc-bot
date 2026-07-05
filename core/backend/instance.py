@@ -22,6 +22,7 @@ class MatchInstance:
         self.no_of_days = 1
         self.crr_day = 1
         self.innings = 1
+        self.innings_declared = False
         self.result = None
         self.target = None
 
@@ -44,19 +45,24 @@ class MatchInstance:
         # self.teamA_stats = {player_id: {"username": "", "runs_made": 0, "balls_faced": 0, "runs_conceded": 0, "balls_bowled": 0, "wickets": 0, "out":1} for player_id in self.players}
         # self.teamB_stats = {player_id: {"username": "", "runs_made": 0, "balls_faced": 0, "runs_conceded": 0, "balls_bowled": 0, "wickets": 0, "out":1} for player_id in self.players}
         self.team_settings = { 'Team A name':'Team A' , 'Team B name':'Team B' }
-        self.match_settings = { 'overs': "", 'days': "" , 'team_batting_first': ""}
+        self.match_settings = { 'overs': 0, 'days': 0 , 'team_batting_first': ""}
         self.players_queue = []
         self.lobby_lock = False
         self.game_started = False
 
+
+        self.fow = [deque(maxlen=11) for _ in range(len(self.players)//2)] # need to be as "66/2 at 13.2"
+        self.last_wicket: discord.User = None
         self.balls_this_over = 0
         self.zeros_by_batsman = 0
         self.last_over_bowler: discord.User = None
-        self.timeline_logdisplay = []
+        self.timeline_logdisplay = [deque(maxlen=12) for _ in range(11)]
         self.afk_players = []
         self.afk_warned_players = []
         self.declared = False
-        self.innings_history = {"innings_1": {}, "innings_2": {}, "innings_3": {}, "innings_4": {}}
+        self.innings_history = {"innings_1": {"team_name": None, "score": None}, "innings_2": {"team_name": None, "score": None}, "innings_3": {"team_name": None, "score": None}, "innings_4": {"team_name": None, "score": None}}
+        self.ten_over_history = [deque(maxlen=10) for _ in range(9)] # need to be as 22/2 in which 22 is runs and 2 is wickets in that over
+
 
         self.lock = asyncio.Lock()
 

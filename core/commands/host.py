@@ -31,17 +31,22 @@ def host(bot: commands.Bot):
         join_match_view.message = join_message
         
 
-    @bot.command(name="check")
+    import pprint
+
+    @bot.command(name="dump")
     @commands.is_owner()
-    async def check_match(ctx: commands.Context):
-        print(ctx.bot.active_matches)
-        match_instance = ctx.bot.active_matches.get(ctx.channel.id)
-        if match_instance:
-            await ctx.send(
-                f"Match created by **{match_instance.host.name}** is currently active. "
-            )
-        else:
-            await ctx.send("No active match in this channel.")
+    async def dump_match(ctx):
+        match = ctx.bot.active_matches.get(ctx.channel.id)
+
+        if not match:
+            await ctx.send("No active match.")
+            return
+
+        data = pprint.pformat(vars(match), indent=2, width=120)
+
+        # Split into Discord-sized chunks
+        for i in range(0, len(data), 1900):
+            await ctx.send(f"```py\n{data[i:i+1900]}\n```")
 
 
     @bot.command(name="instance", aliases=["i"])
@@ -162,7 +167,7 @@ def host(bot: commands.Bot):
             return
         match_instance = ctx.bot.active_matches.get(ctx.channel.id)
         if ctx.author.id == match_instance.host.id:
-            match_instance.overs = overs
+            match_instance.match_settings['overs'] = overs
             await ctx.send(
                 f"The number of overs has been set to **{overs}**."
             )
