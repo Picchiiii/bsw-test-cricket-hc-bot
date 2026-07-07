@@ -43,20 +43,18 @@ class One():
                 break ## Declaration logic
 
             if self.mi.wickets < ((len(self.mi.players))/2):
-                await asyncio.sleep(0.5) 
+                await asyncio.sleep(0.1) 
                 await game.request_ball()
                 if self.mi.balls_this_over == 6:
                     self.mi.overs += 1
                     self.mi.balls_this_over = 0
                     await scorecard.edit(embed=game.generate_scorecard_embed())
                     
+                    self.mi.last_over_bowler = self.mi.curr_bowler
+                    self.mi.curr_bowler = None
                     game.send_next_bowler()
                     await game.next_bowler()
                 await scorecard.edit(embed=game.generate_scorecard_embed())
-
-                self.mi.zeros_by_batsman = 0
-                self.mi.last_over_bowler = self.mi.curr_bowler
-                self.mi.curr_bowler = None
 
                 ### left it here for now, will add the rest of the logic later
 
