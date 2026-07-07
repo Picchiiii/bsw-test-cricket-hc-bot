@@ -2,9 +2,10 @@ import discord
 from core.backend.utils import get_performance
 
 class PlayerSelect(discord.ui.Select):
-    def __init__(self, player_type: str, player_data: dict):
+    def __init__(self, player_type: str, player_data: dict, allowed_user: discord.User):
         self.player_type = player_type
         self.player_data = player_data
+        self.allowed_user = allowed_user
 
         options = []
 
@@ -30,6 +31,13 @@ class PlayerSelect(discord.ui.Select):
         )
 
     async def callback(self, interaction: discord.Interaction):
+        if interaction.user.id != self.allowed_user.id:
+            await interaction.response.send_message(
+                "You are not allowed to make this choice.",
+                ephemeral=True
+            )
+            return
+        
         player_id = int(self.values[0])  
         player = self.player_data[player_id]
 
@@ -39,17 +47,25 @@ class PlayerSelect(discord.ui.Select):
         _player = interaction.guild.get_member(player_id)
 
         if self.player_type == "batsman":
-            match_instance.curr_batsman = _player
+            match_instance.nxt_batsman = _player
         else:
-            match_instance.curr_bowler = _player
+            match_instance.nxt_bowler = _player
 
         await self.view.message.edit(
             content=f"Player has been selected:\nNext {self.player_type} is **{player['player_name']}!**.",
             view=None
         )
-
+    
 class PlayerView(discord.ui.View):
-    def __init__(self, player_type: str, player_data: dict):
-        super().__init__()
+    def __init__(self, player_type: str, player_data: dict, allowed_user: discord.User):
+        super().__init__(timeout=20)  # 2 minutes timeout
         self.message = None
-        self.add_item(PlayerSelect(player_type, player_data))
+        self.add_item(PlayerSelect(player_type, player_data, allowed_user))
+
+
+        async def on_timeout(self):
+            for child in self.children:
+                child.disabled = True
+            
+            if self.message:
+                await self.message.edit(content="Player will be chosen randomly or do np", view=None)

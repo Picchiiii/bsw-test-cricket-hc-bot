@@ -19,7 +19,6 @@ class MatchInstance:
         self.score = 0
         self.overs = 0
         self.wickets = 0
-        self.no_of_days = 1
         self.crr_day = 1
         self.innings = 1
         self.innings_declared = False
@@ -41,9 +40,7 @@ class MatchInstance:
         self.teamA_scores = {"inning_one": {"runs": 0, "balls": 0, "wickets": 0, "follow_on": False, "declared": False, "FOW": []}, "inning_two": {"runs": 0, "balls": 0, "wickets": 0, "follow_on": False, "declared": False, "FOW": []}}
         self.teamB_scores = {"inning_one": {"runs": 0, "balls": 0, "wickets": 0, "follow_on": False, "declared": False, "FOW": []}, "inning_two": {"runs": 0, "balls": 0, "wickets": 0, "follow_on": False, "declared": False, "FOW": []}}
         self.current_batter_stats = {"runs": 0, "balls": 0, "is_out": False, "timeline": deque(['','','','','',''], maxlen=6)}
-        self.current_bowler_stats = {"runs_given": 0, "balls_given": 0, "wickets": 0, "last_action": 0, "hattrick": False, "duck": False, "timeline": deque(['','','','','',''], maxlen=6)}
-        # self.teamA_stats = {player_id: {"username": "", "runs_made": 0, "balls_faced": 0, "runs_conceded": 0, "balls_bowled": 0, "wickets": 0, "out":1} for player_id in self.players}
-        # self.teamB_stats = {player_id: {"username": "", "runs_made": 0, "balls_faced": 0, "runs_conceded": 0, "balls_bowled": 0, "wickets": 0, "out":1} for player_id in self.players}
+        self.current_bowler_stats = {"runs_given": 0, "balls_given": 0, "wickets": 0, "last_action": 0, "hattrick": False, "duck": False, "timeline": deque(maxlen=6)}
         self.team_settings = { 'Team A name':'Team A' , 'Team B name':'Team B' }
         self.match_settings = { 'overs': 0, 'days': 0 , 'team_batting_first': ""}
         self.players_queue = []
@@ -70,8 +67,12 @@ class MatchInstance:
 def join_segregate_player(match_instance: MatchInstance, player: discord.User):
     if len(match_instance.teamA) <= len(match_instance.teamB):
         match_instance.teamA.append(player)
+        if match_instance.teamA_captain is None:
+            match_instance.teamA_captain = player
     else:
         match_instance.teamB.append(player)
+        if match_instance.teamB_captain is None:
+            match_instance.teamB_captain = player
 
 def leave_segregate_player(match_instance: MatchInstance, player: discord.User):
     if player in match_instance.teamA:

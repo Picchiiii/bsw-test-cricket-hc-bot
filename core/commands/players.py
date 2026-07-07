@@ -1,8 +1,10 @@
 import discord
 import asyncio
-from discord import player
+from discord import message
 from discord.ext import commands
+from core.backend.instance import MatchInstance
 import logging
+from core.backend.views.declare_view import DeclarationView
 from core.backend.instance import join_segregate_player, leave_segregate_player
 logger = logging.getLogger(__name__)
 
@@ -52,6 +54,7 @@ def players(bot: commands.Bot):
                         f"Host: **{match_instance.host.name}**\n"
                         f"Total Players: **{len(match_instance.players)}/22**\n"
                         f"Overs: **{match_instance.overs if match_instance.overs != 0 else '<:redcross:1519046806338670633>'}**\n"
+                        f"Days: **{match_instance.match_settings['days'] if match_instance.match_settings['days'] != 0 else '<:redcross:1519046806338670633>'}**\n"
                         "――――――――――――――――――――"
                     ),
                     color=discord.Color.blue()
@@ -60,7 +63,7 @@ def players(bot: commands.Bot):
                 team_a_value = (
                     "```\n" +
                     "\n".join(
-                        f"{i}. {player.name}"
+                        f"{i}. {player.name} {get_player_suffix(player, match_instance)}"
                         for i, player in enumerate(match_instance.teamA, start=1)
                     ) +
                     "\n```"
@@ -69,7 +72,7 @@ def players(bot: commands.Bot):
                 team_b_value = (
                     "```\n" +
                     "\n".join(
-                        f"{i}. {player.name}"
+                        f"{i}. {player.name} {get_player_suffix(player, match_instance)}"
                         for i, player in enumerate(match_instance.teamB, start=1)
                     ) +
                     "\n```"
@@ -92,5 +95,43 @@ def players(bot: commands.Bot):
                 await ctx.send(embed=lobby_embed)
             else:
                 await ctx.send("No players have joined the match yet.")
+        else:
+            await ctx.send("No active match in this channel.")
+
+
+    def get_player_suffix(player, match_instance):
+        suffixes = []
+
+        if player == match_instance.host:
+            suffixes.append("(H)")
+
+        if player == match_instance.teamA_captain or \
+        player == match_instance.teamB_captain:
+            suffixes.append("(C)")
+
+        return " " + " ".join(suffixes) if suffixes else ""
+    
+    @bot.command(name="declare", aliases=["dec"])
+    async def declare_innings(ctx: commands.Context):
+        match_instance: MatchInstance = ctx.bot.active_matches.get(ctx.channel.id)
+        if match_instance:
+            if ctx.author.id == match_instance.teamA_captain and match_instance.batting_team == "A":
+                if not match_instance.innings_declared:
+                    declaration_view = DeclarationView(match_instance, None, ctx.author)
+                    message = await ctx.send(f"Do you want to declare the innings?", view=declaration_view)
+                    declaration_view.message = message
+                else:
+                    await ctx.send("The innings has already been declared.")
+
+            elif ctx.author.id == match_instance.teamB_captain and match_instance.batting_team == "B":
+                if not match_instance.innings_declared:
+                    declaration_view = DeclarationView(match_instance, None, ctx.author)
+                    message = await ctx.send(f"Do you want to declare the innings?", view=declaration_view)
+                    declaration_view.message = message
+                else:
+                    await ctx.send("The innings has already been declared.")
+            else:
+                await ctx.send("You are not the captain of the batting team.")
+
         else:
             await ctx.send("No active match in this channel.")

@@ -278,3 +278,19 @@ def host(bot: commands.Bot):
                 await ctx.send("Both players must be part of the game to swap.")
         else:
             await ctx.send("No active match in this channel." if not match_instance else "Only the host can swap players.")
+
+
+    @bot.command(name="stday", aliases=["sd"])
+    async def set_no_of_days(ctx: commands.Context, days: int):
+        if ctx.channel.id not in ctx.bot.active_matches:
+            await ctx.send("No active match in this channel.")
+            return
+        
+        match_instance = ctx.bot.active_matches.get(ctx.channel.id)
+        if ctx.author.id == match_instance.host.id:
+            match_instance.match_settings['days'] = days
+            await ctx.send(
+                f"The match days have been set to **{days}**."
+            )
+        else:
+            await ctx.send("Only the host can set the match days.")
