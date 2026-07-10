@@ -1,17 +1,21 @@
 import discord
 from discord.ext import commands
 import logging
-
-
-logger = logging.getLogger(__name__)
+import time
 
 def owner(bot: commands.Bot):
 
-    
-    @bot.command(name="instance", aliases=["gi"])
-    async def get_instance(ctx: commands.Context):
-        match_instance = bot.active_matches.get(ctx.channel.id)
-        if match_instance:
-            await ctx.send(f"Match instance found for channel {ctx.channel.name}.")
-        else:
-            await ctx.send(f"No match instance found for channel {ctx.channel.name}.")
+    @bot.command(name="owner", aliases=["o"])
+    @commands.is_owner()
+    async def owner_command(ctx: commands.Context):
+        await ctx.send("You are the owner of this bot.")
+
+        
+
+    @bot.command(name="ping", aliases=["p"])
+    async def ping(ctx: commands.Context):
+        start_time = time.time()
+        message = await ctx.send("Pinging...")
+        end_time = time.time()
+        latency = (end_time - start_time) * 1000  
+        await message.edit(content=f"Pong! Latency: {latency:.2f} ms")

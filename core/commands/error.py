@@ -5,6 +5,14 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+class WebhookErrorHandler():
+    def __init__(self, error):
+        self.error = error
+
+    async def on_webhook_error(self, error: Exception):
+        logger.error(f"Webhook error occurred: {error}")
+        # You can add more sophisticated error handling here, such as notifying admins or retrying the webhook.
+
 def error_handler(bot: commands.Bot):
 
 
@@ -26,3 +34,6 @@ def error_handler(bot: commands.Bot):
             )
             logger.error(f"Unhandled command error: {error}")
             await ctx.send(embed=embed)
+
+
+    

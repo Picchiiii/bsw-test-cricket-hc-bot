@@ -1,6 +1,5 @@
 import discord
 import asyncio
-from discord import message
 from discord.ext import commands
 from core.backend.instance import MatchInstance
 import logging
@@ -11,11 +10,33 @@ logger = logging.getLogger(__name__)
 def players(bot: commands.Bot):
 
     @bot.command(name="join", aliases=["j"])
-    async def join_match(ctx: commands.Context):    
+    async def join_match(ctx: commands.Context, *args):    
         match_instance = ctx.bot.active_matches.get(ctx.channel.id)
-        #= Add logic to ensure player is not able to join after match is started or the lobby is locked
-        if match_instance and not match_instance.lobby_lock:
+        rep = " ".join(args).lower() if args else None
+        if rep and rep not in ["r","rep", "representative"]:
+            await ctx.send("Invalid representative type. Please use 'r', 'rep', or 'representative'.")
+            return
+        
+        #= Add logic to get reps in as well
+        if match_instance:
             if ctx.author not in match_instance.players:
+                if match_instance.lobby_lock:
+                    await ctx.send("The lobby is locked. You cannot join the match at this time.")
+                    return
+                if match_instance.game_started:
+                    await ctx.send("The match has already started. You cannot join now.")
+                    return
+                
+                if rep:
+                    if ctx.author.id in match_instance.players:
+                        await ctx.send("You have already joined the match as a representative.")
+                        return
+                    match_instance.players.append(ctx.author.id)
+                    await ctx.send(
+                        f"**{ctx.author.name}** has joined the game as a representative. <:correct:1519046913666715749>"
+                    )
+                    #= Fix the rep code
+                
                 match_instance.players.append(ctx.author)
                 join_segregate_player(match_instance, ctx.author)
                 await ctx.send(
@@ -32,6 +53,18 @@ def players(bot: commands.Bot):
         match_instance = ctx.bot.active_matches.get(ctx.channel.id)
         
         if match_instance:
+            if ctx.author == match_instance.host:
+                await ctx.send("The host cannot leave the match. Change the host before you leave.")
+                return
+            
+            if ctx.author == match_instance.teamA_captain or ctx.author == match_instance.teamB_captain:
+                await ctx.send("The captain cannot leave the match. Change the captain before you leave.")
+                return
+            
+            if match_instance.game_started:
+                await ctx.send("You cannot leave the match after it has started.")
+                return
+            
             if ctx.author in match_instance.players:
                 match_instance.players.remove(ctx.author)
                 leave_segregate_player(match_instance, ctx.author)
@@ -53,7 +86,7 @@ def players(bot: commands.Bot):
                     description=(
                         f"Host: **{match_instance.host.name}**\n"
                         f"Total Players: **{len(match_instance.players)}/22**\n"
-                        f"Overs: **{match_instance.overs if match_instance.overs != 0 else '<:redcross:1519046806338670633>'}**\n"
+                        f"Overs: **{match_instance.match_settings['overs'] if match_instance.match_settings['overs'] != 0 else '<:redcross:1519046806338670633>'}**\n"
                         f"Days: **{match_instance.match_settings['days'] if match_instance.match_settings['days'] != 0 else '<:redcross:1519046806338670633>'}**\n"
                         "――――――――――――――――――――"
                     ),

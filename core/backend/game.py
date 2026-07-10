@@ -157,6 +157,38 @@ class Game:
                 output.append(self.emoji_map.get(part, part))
 
         return " | ".join(output)
+    
+    def format_dm_over_timeline(self, type: str):
+        entries = []
+
+        # Flatten timeline
+        for line in self.mi.current_bowler_stats["over_timeline"] if type == "bowler" else self.mi.current_batter_stats["over_timeline"]:  # line 0 → 10
+            for item in line:
+                if not item:
+                    continue
+
+                entries.extend(
+                    p for p in str(item).split("|") if p
+                )
+
+        # keep all events of the over except for blanks
+        output = []
+
+        for event in entries:
+            parts = event.split("|")
+
+            # NB first (if present)
+            if "NB" in parts:
+                output.append(self.emoji_map["NB"])
+
+            # Then the actual ball result(s)
+            for part in parts:
+                if part == "NB":
+                    continue
+
+                output.append(self.emoji_map.get(part, part))
+
+        return " | ".join(output)
 
     def format_fow(self):
         output = []
@@ -373,20 +405,24 @@ class Game:
         not_out_players = {
             pid: pdata
             for pid, pdata in batting_players_data.items()
-            if isinstance(pid, int) and not pdata["is_out"]
+            if isinstance(pid, int) and not pdata["is_out"] and not pid == (self.mi.curr_batsman.id if self.mi.curr_batsman else None)
         }
-        batting_team_captain = self.captains[self.mi.batting_turn]
-        player_view = PlayerView("batsman", not_out_players, batting_team_captain)
-        message = await self.ctx.send(
-            f"{batting_team_captain.mention}, Select your next batsman:",
-            view=player_view
-        )
-        player_view.message = message  
+        if not not_out_players == {}:
+            batting_team_captain = self.captains[self.mi.batting_turn]
+            player_view = PlayerView("batsman", not_out_players, batting_team_captain)
+            message = await self.ctx.send(
+                f"{batting_team_captain.mention}, Select your next batsman:",
+                view=player_view
+            )
+            player_view.message = message
 
     async def next_bowler(self):
         bowling_players_data = self.teams[self.mi.bowling_turn]
+        new_players_data = bowling_players_data.copy()
+        if self.mi.curr_bowler:
+            new_players_data.pop(self.mi.curr_bowler.id, None) # Remove current bowler from selection
         bowling_team_captain = self.captains[self.mi.bowling_turn]
-        player_view = PlayerView("bowler", bowling_players_data, bowling_team_captain)
+        player_view = PlayerView("bowler", new_players_data, bowling_team_captain)
         message = await self.ctx.send(
             f"{bowling_team_captain.mention}, Select your next bowler:",
             view=player_view
@@ -403,32 +439,11 @@ class Game:
     def send_next_bowler(self):
         if self.mi.nxt_bowler is None or self.mi.nxt_bowler == self.mi.last_over_bowler:
             bowling_team = self.teams[self.mi.bowling_turn]
-            bowling_team_except_last_bowler = {pid: pdata for pid, pdata in bowling_team.items() if pdata != self.mi.curr_bowler}
+            bowling_team_except_last_bowler = {pid: pdata for pid, pdata in bowling_team.items() if pdata != self.mi.last_over_bowler}
             self.mi.curr_bowler = random.choice(list(bowling_team_except_last_bowler.values()))
         else:
             self.mi.curr_bowler = self.mi.nxt_bowler
 
-    async def complete_over(self):
-        self.mi.overs += 1
-        self.mi.balls_this_over = 0
-        self.mi.zeros_by_batsman = 0
-
-        embed = discord.Embed(
-            title=f"Over {self.mi.overs} completed!",
-            description=f"Next bowler is {self.mi.nxt_bowler.name}.",
-            color=0x00ff00
-        )
-        embed.add_field(name="Score", value=f"{self.mi.score}/{self.mi.wickets} ({self.mi.overs}.{self.mi.balls_this_over})", inline=False)
-        embed.add_field(name=f"{self.mi.curr_batsman.name}'s Score", value=f"╰`{self.mi.current_batter_stats['runs']} ({self.mi.current_batter_stats['balls']})`", inline=False)
-        embed.add_field(name=f"{self.mi.curr_bowler.name}'s Score", value=f"╰`{self.mi.current_bowler_stats['wickets']} - {self.mi.current_bowler_stats['runs_given']} ({self.mi.current_bowler_stats['balls_given']//6}.{self.mi.current_bowler_stats['balls_given']%6})`", inline=False)
-        embed.add_field(name="Over Timeline", value=f"{self.format_over_timeline()}", inline=False) # only last 6 balls of the over
-        embed.set_footer(text=f"Overs left today {self.mi.match_settings['overs'] - self.mi.overs // 6}.{self.mi.match_settings['overs'] - self.mi.overs % 6} | Overs left in match {self.mi.match_settings['overs'] - self.mi.overs // 6}")
-
-        self.mi.last_over_bowler = self.mi.curr_bowler
-        self.mi.curr_bowler = self.mi.nxt_bowler
-        self.mi.nxt_bowler = None
-
-        await self.ctx.send(content=self.mi.curr_bowler.mention, embed=embed)
 
     async def countdown(self, messages, duration=30, interval=5):
         remaining = duration
@@ -554,20 +569,26 @@ class Game:
             if self.mi.zeros_by_batsman == 4 :
                 await self.handle_four_ball_dismissal(bowl_response)
                 return
-            await self.add_score(0)
+            await self.add_score(0, int(bowl_response))
             self.add_timeline_entry("0")
             self.mi.zeros_by_batsman += 1
         else:
-            await self.mi.curr_batsman.send(f"Bowler's Last Action: {bowl_response}\nYour Score: {self.mi.current_batter_stats['runs']} ({self.mi.current_batter_stats['balls']})")
-            await self.mi.curr_bowler.send(f"Batter's Last Action: {bat_response}\nBatter Score: {self.mi.current_batter_stats['runs']} ({self.mi.current_batter_stats['balls']})")
-            await self.add_score(int(bat_response))
-            self.add_timeline_entry(str(int(bat_response)))
+            await self.add_score(int(bat_response), int(bowl_response))
+            await self.mi.curr_batsman.send(f"Bowler's Last Action: {bowl_response}\nYour Score: {self.mi.current_batter_stats['runs']} ({self.mi.current_batter_stats['balls']})\n{self._dm_timeline("batsman")}")
+            await self.mi.curr_bowler.send(f"Batter's Last Action: {bat_response}\nBatter Score: {self.mi.current_batter_stats['runs']} ({self.mi.current_batter_stats['balls']})\n{self._dm_timeline("bowler")}")
 
-    async def _score(self):
-        embed = discord.Embed(
-            title=f"Scorecard",
+    def _dm_timeline(self, player_type):
+        bowler_timeline = self.format_dm_over_timeline("bowler")
+        batter_timeline = self.format_dm_over_timeline("batsman")
 
-        )
+        if player_type == "batsman":
+            timeline_text = f"-# Your Input: {batter_timeline}\n-# Bowler's Input: {bowler_timeline}"
+        elif player_type == "bowler":
+            timeline_text = f"-# Your Input: {bowler_timeline}\n-# Batter's Input: {batter_timeline}"
+        else:
+            timeline_text = f"-# Timeline: {bowler_timeline} | {batter_timeline}"
+
+        return timeline_text
 
     async def handle_dismissal(self, bat_response):
         self.mi.wickets += 1
@@ -575,10 +596,11 @@ class Game:
         self.mi.current_batter_stats["is_out"] = True
         self.mi.current_bowler_stats["balls_given"] += 1
         self.mi.current_bowler_stats["wickets"] += 1
-        self.mi.current_bowler_stats["timeline"].append("W")
-        self.mi.current_batter_stats["timeline"].append(str(bat_response))
+        self.mi.current_bowler_stats["over_timeline"].append("W")
+        self.mi.current_batter_stats["over_timeline"].append(str(bat_response))
         self.mi.current_bowler_stats["last_action"] = bat_response
         self.mi.current_batter_stats["last_action"] = bat_response
+        self.mi.fow.append(f"{self.mi.score}/{self.mi.wickets} at {self.mi.overs}.{self.mi.balls_this_over}")
         self.add_timeline_entry("W")
 
         link_view = ChannelLinkView(self.mi)
@@ -596,6 +618,10 @@ class Game:
         embed.add_field(name="Score", value=f"{self.mi.score}/{self.mi.wickets} ({self.mi.overs}.{self.mi.balls_this_over})", inline=False)
         embed.add_field(name="Next batsman", value=f"{self.mi.nxt_batsman.name if self.mi.nxt_batsman else 'To be selected'}", inline=False)
         await self.mi.channel.send(content=self.mi.nxt_batsman.mention, embed=embed)
+        self.current_batter_stats = {"runs": 0, "balls": 0, "is_out": False, "over_timeline": deque(maxlen=12)}
+
+        self.send_next_batsman()
+        await self.next_batsman()
 
     async def handle_four_ball_dismissal(self, bowler_response):
         self.mi.wickets += 1
@@ -603,10 +629,11 @@ class Game:
         self.mi.current_batter_stats["is_out"] = True
         self.mi.current_bowler_stats["balls_given"] += 1
         self.mi.current_bowler_stats["wickets"] += 1
-        self.mi.current_bowler_stats["timeline"].append("W")
-        self.mi.current_batter_stats["timeline"].append("0")
+        self.mi.current_bowler_stats["over_timeline"].append("W")
+        self.mi.current_batter_stats["over_timeline"].append("0")
         self.mi.current_bowler_stats["last_action"] = bowler_response
         self.mi.current_batter_stats["last_action"] = 0
+        self.mi.fow.append(f"{self.mi.score}/{self.mi.wickets} at {self.mi.overs}.{self.mi.balls_this_over}")
         self.add_timeline_entry("W")
 
         await self.mi.curr_batsman.send(f"**You are Out! You played more than Four 0s in this over**\nScore: {self.mi.current_batter_stats['runs']} ({self.mi.current_batter_stats['balls']})")
@@ -624,6 +651,10 @@ class Game:
         embed.add_field(name="Next batsman", value=f"{self.mi.nxt_batsman.name if self.mi.nxt_batsman else 'To be selected'}", inline=False)
 
         await self.mi.channel.send(content=self.mi.nxt_batsman.mention, embed=embed)
+        self.current_batter_stats = {"runs": 0, "balls": 0, "is_out": False, "over_timeline": deque(maxlen=12)}
+
+        self.send_next_batsman()
+        await self.next_batsman()
 
     async def handle_afk(self, afk_players): ## Check
         for player in afk_players:
@@ -647,7 +678,7 @@ class Game:
     async def handle_noball(self):
         self.mi.score += 1
         self.mi.current_bowler_stats["runs_given"] += 1
-        self.mi.current_bowler_stats["timeline"].append("NB")
+        self.mi.current_bowler_stats["over_timeline"].append("NB")
         self.mi.current_bowler_stats["last_action"] = "NB"
         self.add_timeline_entry("NB")
         embed = discord.Embed(
@@ -670,13 +701,43 @@ class Game:
         self.mi.timeline_logdisplay[0].popleft()
         self.mi.timeline_logdisplay[0].append(entry)
 
-    async def add_score(self, runs):
+    async def add_score(self, bat_response, bowl_response):
+        runs = int(bat_response)
         self.mi.score += runs
         self.mi.current_batter_stats["runs"] += runs
         self.mi.current_batter_stats["balls"] += 1
         self.mi.current_bowler_stats["runs_given"] += runs
         self.mi.current_bowler_stats["balls_given"] += 1
-        self.mi.current_bowler_stats["timeline"].append(str(runs))
-        self.mi.current_batter_stats["timeline"].append(str(runs))
+        self.mi.current_bowler_stats["over_timeline"].append(str(bowl_response))
+        self.mi.current_batter_stats["over_timeline"].append(str(runs))
         self.mi.balls_this_over += 1
-        self.mi.current_bowler_stats["last_action"] = 0
+        self.mi.current_bowler_stats["last_action"] = bowl_response
+        self.mi.current_batter_stats["last_action"] = bat_response
+        self.add_timeline_entry(str(runs))
+
+    async def complete_over(self):
+        self.mi.overs += 1
+        self.mi.balls_this_over = 0
+        self.mi.zeros_by_batsman = 0
+        self.mi.overs_in_the_day += 1
+
+        self.mi.current_bowler_stats = {"runs_given": 0, "balls_given": 0, "wickets": 0, "last_action": 0, "hattrick": False, "duck": False, "over_timeline": deque(maxlen=12)}
+
+        embed = discord.Embed(
+            title=f"Over {self.mi.overs} completed!",
+            description=f"Next bowler is {self.mi.nxt_bowler.name}.",
+            color=0x00ff00
+        )
+        embed.add_field(name="Score", value=f"{self.mi.score}/{self.mi.wickets} ({self.mi.overs}.{self.mi.balls_this_over})", inline=False)
+        embed.add_field(name=f"{self.mi.curr_batsman.name}'s Score", value=f"╰`{self.mi.current_batter_stats['runs']} ({self.mi.current_batter_stats['balls']})`", inline=False)
+        embed.add_field(name=f"{self.mi.curr_bowler.name}'s Score", value=f"╰`{self.mi.current_bowler_stats['wickets']} - {self.mi.current_bowler_stats['runs_given']} ({self.mi.current_bowler_stats['balls_given']//6}.{self.mi.current_bowler_stats['balls_given']%6})`", inline=False)
+        embed.add_field(name="Over Timeline", value=f"{self.format_over_timeline()}", inline=False) # only last 6 balls of the over
+        embed.set_footer(text=f"Overs left today {self.mi.match_settings['overs'] - self.mi.overs // 6}.{self.mi.match_settings['overs'] - self.mi.overs % 6} | Overs left in match {self.mi.match_settings['overs'] - self.mi.overs // 6}")
+
+        self.mi.last_over_bowler = self.mi.curr_bowler
+        self.mi.curr_bowler = self.mi.nxt_bowler
+        self.mi.nxt_bowler = None
+
+        await self.ctx.send(content=self.mi.curr_bowler.mention, embed=embed)
+        self.send_next_bowler()
+        await self.next_bowler()

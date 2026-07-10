@@ -28,7 +28,7 @@ class MatchInstance:
         self.teamA_captain: discord.User = None
         self.teamB_captain: discord.User = None
         self.toss_winner: discord.User = None
-        self.teamA_turn = None
+        # self.teamA_turn = None
         self.curr_batsman: discord.User = None
         self.nxt_batsman: discord.User = None
         self.curr_bowler: discord.User = None
@@ -39,11 +39,11 @@ class MatchInstance:
         self.bowling_turn = None
         self.teamA_scores = {"inning_one": {"runs": 0, "balls": 0, "wickets": 0, "follow_on": False, "declared": False, "FOW": []}, "inning_two": {"runs": 0, "balls": 0, "wickets": 0, "follow_on": False, "declared": False, "FOW": []}}
         self.teamB_scores = {"inning_one": {"runs": 0, "balls": 0, "wickets": 0, "follow_on": False, "declared": False, "FOW": []}, "inning_two": {"runs": 0, "balls": 0, "wickets": 0, "follow_on": False, "declared": False, "FOW": []}}
-        self.current_batter_stats = {"runs": 0, "balls": 0, "is_out": False, "timeline": deque(['','','','','',''], maxlen=6)}
-        self.current_bowler_stats = {"runs_given": 0, "balls_given": 0, "wickets": 0, "last_action": 0, "hattrick": False, "duck": False, "timeline": deque(maxlen=6)}
+        self.current_batter_stats = {"runs": 0, "balls": 0, "is_out": False, "over_timeline": deque(maxlen=12)}
+        self.current_bowler_stats = {"runs_given": 0, "balls_given": 0, "wickets": 0, "last_action": 0, "hattrick": False, "duck": False, "over_timeline": deque(maxlen=12)}
         self.team_settings = { 'Team A name':'Team A' , 'Team B name':'Team B' }
         self.match_settings = { 'overs': 0, 'days': 0 , 'team_batting_first': ""}
-        self.players_queue = []
+        # self.players_queue = []
         self.lobby_lock = False
         self.game_started = False
 
@@ -59,8 +59,8 @@ class MatchInstance:
         self.declared = False
         self.innings_history = {"innings_1": {"team_name": None, "score": None}, "innings_2": {"team_name": None, "score": None}, "innings_3": {"team_name": None, "score": None}, "innings_4": {"team_name": None, "score": None}}
         self.ten_over_history = [deque(maxlen=10) for _ in range(9)] # need to be as 22/2 in which 22 is runs and 2 is wickets in that over
-
-
+        self.overs_in_the_day = 0
+        self.match_abandoned = False
         self.lock = asyncio.Lock()
 
 

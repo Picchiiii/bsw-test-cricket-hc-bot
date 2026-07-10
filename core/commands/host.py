@@ -10,7 +10,10 @@ logger = logging.getLogger(__name__)
 
 def host(bot: commands.Bot):
     bot.active_matches = {}
-    
+
+    async def match_already_started(ctx: commands.Context):
+        await ctx.send("You cannot do that. A match is already started in this channel.")
+
     @bot.command(name="create", aliases=["c"])
     async def create_match(ctx: commands.Context):
         if ctx.channel.id in ctx.bot.active_matches:
