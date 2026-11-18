@@ -1,0 +1,32 @@
+prefix = "+"
+bot_name = "BSW Test Cricket"
+website_url = "https://bsw.example.app"
+
+[game]
+ball_timeout = 0.25
+selection_timeout = 0.15
+decision_timeout = 0.3
+afk_max_strikes = 3
+min_declare_overs = 1
+follow_on_pct = 50
+max_no_balls_per_over = 0
+max_players = 22
+min_overs = 10
+max_overs = 90
+min_days = 1
+max_days = 5
+lobby_ttl_minutes = 0
+last_man_bats = false
+use_custom_emojis = true
+cpu_delay = 0
+squad_check_seconds = 0
+
+[economy]
+min_balls_for_rewards = 0
+
+[access]
+whitelist_enabled = false
+
+[tournament]
+web_poll_seconds = 0
+housekeeping_seconds = 0

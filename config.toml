@@ -1,1 +1,125 @@
-prefix = "b!"
+# ─────────────────────────────────────────────────────────────
+#  BSW Test Cricket bot — configuration
+#  Secrets (bot token, Turso credentials) live in .env, never here.
+# ─────────────────────────────────────────────────────────────
+
+prefix = "+"
+# Brand name shown in embeds / footers
+bot_name = "BSW Test Cricket"
+# Public URL of the Vercel website (leave "" to hide website links in embeds)
+website_url = "https://test-match-hand-cricket.vercel.app"
+# Support server invite (optional, shown in help)
+support_url = ""
+
+# Discord user IDs with owner powers (server whitelist, economy control).
+# Leave empty to use the owner of the Discord application. OWNER_IDS in .env adds to this list.
+owner_ids = []
+
+[game]
+# Seconds each player gets to send a number for a ball
+ball_timeout = 30
+# Seconds a captain gets to pick a batter / bowler from a dropdown
+selection_timeout = 30
+# Seconds for toss / bat-bowl / follow-on / declaration prompts
+decision_timeout = 120
+# Consecutive missed balls before AFK action (batter out / bowler replaced)
+afk_max_strikes = 3
+# Overs that must be bowled in an innings before the batting captain may declare
+min_declare_overs = 5
+# Follow-on is available when the side batting 2nd scores less than this % of the 1st-innings total
+follow_on_pct = 50
+# Optional house rule: bowler is changed after this many no-balls in one over (0 = off)
+max_no_balls_per_over = 0
+# Lobby limits
+max_players = 22
+min_overs = 10
+max_overs = 90
+min_days = 1
+max_days = 5
+# Lobbies that never start are closed after this many minutes (0 = never)
+lobby_ttl_minutes = 60
+# false = innings ends when one batter is left (spec "last man standing" rule)
+# true  = the last batter bats alone, innings ends when every batter is out
+last_man_bats = false
+# Use the bot's custom application emojis (set false to fall back to unicode)
+use_custom_emojis = true
+
+# ── Representatives (`+join rep`, shown as (R)) ──
+# Most runs a rep may score in one innings (0 = no cap). Hosts change it per match with
+# `+settings rep_run_cap <n>`; tournaments have their own `rep_run_cap` setting.
+rep_run_cap = 30
+# false = reps never bowl (host: `+settings rep_can_bowl 1`)
+rep_can_bowl = false
+# true  = a rep who reaches the cap is "retired out" and it counts as a wicket
+# false = "retired not out" (no wicket; the innings still ends when nobody is left to bat)
+rep_retire_counts_wicket = true
+# Most reps per team in one match (0 = no limit)
+max_reps_per_team = 0
+
+# ── Substitutes (`+sub @out @in`) ──
+# When play resumes (next day after stumps, or after a pause) the bot shows both squads for this many
+# seconds so captains can `+sub` anyone who isn't there today. "Start play" / `+resume` starts sooner.
+# 0 = no squad check.
+squad_check_seconds = 60
+# Allow substitutions after the match has started (they are always allowed in the lobby)
+subs_during_match = true
+# Most substitutions per team per match (0 = no limit)
+max_subs_per_team = 0
+
+# ── CPU players (`+cpu add`) — friendly matches only ──
+cpu_enabled = true
+# Seconds a CPU "thinks" before each pick (0 = instant)
+cpu_delay = 1.0
+# false = a match with a CPU in it records no stats and pays no coins (stops coin farming)
+cpu_matches_count = false
+
+# Post the public JSON match sheet (match_<id>.json) with the result
+match_sheet_file = true
+
+[economy]
+currency_name = "Coins"
+currency_emoji = "🪙"
+start_balance = 500
+daily = 250
+daily_streak_bonus = 25
+daily_streak_cap = 7
+weekly = 1500
+# Match rewards
+participation = 50
+win = 150
+draw = 60
+tie = 100
+per_run = 1
+per_wicket = 10
+fifty = 50
+hundred = 150
+five_wickets = 100
+hattrick = 200
+potm = 100
+# Matches shorter than this many legal balls in total pay no rewards and record no stats (anti-farm)
+min_balls_for_rewards = 30
+# Switches (the owner can also flip these live with `+eco config <name> on|off`)
+daily_enabled = true
+weekly_enabled = true
+give_enabled = true
+shop_enabled = true
+match_rewards_enabled = true
+
+# ─────────────────────────────────────────────────────────────
+#  Access control (server whitelist)
+# ─────────────────────────────────────────────────────────────
+[access]
+# true = only servers you allow with `+server allow` can use the bot
+whitelist_enabled = true
+# Text shown to servers that are not allowed, e.g. "DM @you or join discord.gg/xxxx". "" = mention the owner
+contact = ""
+# true = leave servers that are not on the whitelist as soon as the bot is added
+leave_unlisted = false
+# DM the owner whenever the bot is added to a server
+notify_owner_on_join = true
+
+[tournament]
+# How often (seconds) the bot looks for actions requested on the website. 0 turns website control off.
+web_poll_seconds = 3
+# How often (seconds) the bot sends fixture reminders and refreshes server roles/channels for the website
+housekeeping_seconds = 60

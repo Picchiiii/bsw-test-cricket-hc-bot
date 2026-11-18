@@ -3,3 +3,9 @@ discord.py>=2.4.0
 
 # config / env
 python-dotenv>=1.0.0
+
+# Turso HTTP client (optional: the bot falls back to the standard library if missing)
+httpx>=0.27.0
+
+# image scorecards at stumps / match end
+Pillow>=10.1.0

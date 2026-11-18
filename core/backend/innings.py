@@ -1,110 +1,59 @@
 import discord
 from discord.ext import commands
-from core.backend import game
 from core.backend.instance import MatchInstance
 import asyncio
 import logging
 
 logger = logging.getLogger(__name__)
 
+# Every innings now runs through one shared loop, Game.play_innings() (spec §5.1). These classes are
+# kept as thin, readable phase markers so existing call sites keep working.
 
-class One():
-    def __init__(self, ctx, match_instance: MatchInstance):
+
+class _InningsPhase:
+    number = 0
+
+    def __init__(self, ctx, match_instance: MatchInstance, game=None):
         self.ctx: commands.Context = ctx
         self.mi = match_instance
+        self.game = game or match_instance.game
+
+    async def start(self):
+        if self.game is None:
+            from core.backend.game import Game
+            self.game = Game(self.ctx, self.mi)
+            await self.game.initialise()
+        if self.mi.innings != self.number or self.mi.phase != "innings":
+            self.game.begin_innings_state(self.number)
+        await self.game.play_innings(self.number)
+
+
+class One(_InningsPhase):
+    number = 1
 
     async def start_first_innings(self):
-        from core.backend.game import Game
-        game = Game(self.ctx, self.mi)
-        await game.initialise()
-        await self.ctx.channel.send("The Match has started!")
-        
-        await game.next_batsman()
-        await game.next_bowler()
-        await asyncio.sleep(20)
-        if self.mi.curr_batsman is None:
-            game.send_next_batsman()
-        if self.mi.curr_bowler is None:
-            game.send_next_bowler()
-        embed = discord.Embed(
-            title="Innings 1 has started!",
-            description=f"First batter is {self.mi.curr_batsman.mention}\n\nFirst bowler is {self.mi.curr_bowler.mention}",
-            color=discord.Color.blue()
-            )
-        embed.set_footer(text="Start sending your actions in my DMs")
-        
-        await self.ctx.channel.send(content= f"{self.mi.curr_batsman.mention} {self.mi.curr_bowler.mention}",embed=embed)
+        await self.start()
 
-        scorecard = await self.ctx.channel.send(embed=game.generate_scorecard_embed())
-        await game.next_batsman()
-        await game.next_bowler()
 
-        while self.mi.overs < self.mi.match_settings['overs']:
-            if self.mi.match_abandoned == True:
-                Innings.abandon_match(self.ctx, self.mi)
-                break
-            if self.mi.innings_declared == True:
-                break ## Declaration logic
-
-            if self.mi.wickets < ((len(self.mi.players))/2):
-                await game.request_ball()
-                if self.mi.balls_this_over == 6:
-                    await scorecard.edit(embed=game.generate_scorecard_embed())
-                    await game.complete_over()
-
-                await scorecard.edit(embed=game.generate_scorecard_embed())
-            else:
-                await self.ctx.channel.send("All wickets have fallen. Innings is over.")
-                break
-
-        await Two(self.ctx, self.mi, game).start_second_innings()
-        
-
-class Two():
-    def __init__(self, ctx, match_instance: MatchInstance, game):
-        self.ctx: commands.Context = ctx
-        self.mi = match_instance
-        self.game = game
+class Two(_InningsPhase):
+    number = 2
 
     async def start_second_innings(self):
-        await self.ctx.channel.send("Innings 2 has started!")
-        
-        await self.game.next_batsman()
-        await self.game.next_bowler()
-        await asyncio.sleep(20)
-        if self.mi.curr_batsman is None:
-            self.game.send_next_batsman()
-        if self.mi.curr_bowler is None:
-            self.game.send_next_bowler()
-        embed = discord.Embed(
-            title="Innings 2 has started!",
-            description=f"First batter is {self.mi.curr_batsman.mention}\n\nFirst bowler is {self.mi.curr_bowler.mention}",
-            color=discord.Color.blue()
-            )
-        embed.set_footer(text="Start sending your actions in my DMs")
-        
-        await self.ctx.channel.send(content= f"{self.mi.curr_batsman.mention} {self.mi.curr_bowler.mention}",embed=embed)
+        await self.start()
 
-        scorecard = await self.ctx.channel.send(embed=self.game.generate_scorecard_embed())
-        await self.game.next_batsman()
-        await self.game.next_bowler()
 
-        while self.mi.overs < self.mi.match_settings['overs']:
-            if self.mi.match_abandoned == True:
-                Innings.abandon_match(self.ctx, self.mi)
-                break
-            if self.mi.innings_declared == True:
-                break ## Declaration logic
+class Three(_InningsPhase):
+    number = 3
 
-            if self.mi.wickets < ((len(self.mi.players))/2):
-                await self.game.request_ball()
-                if self.mi.balls_this_over == 6:
-                    await scorecard.edit(embed=self.game.generate_scorecard_embed())
+    async def start_third_innings(self):
+        await self.start()
 
-                await scorecard.edit(embed=self.game.generate_scorecard_embed())
-            else:
-                await self.ctx.channel.send("All wickets have fallen. Innings is over.")
-                break
+
+class Four(_InningsPhase):
+    number = 4
+
+    async def start_fourth_innings(self):
+        await self.start()
 
 
 class Innings:
@@ -115,8 +64,9 @@ class Innings:
 
     @staticmethod
     def abandon_match(ctx, match_instance: MatchInstance):
-        del ctx.bot.active_matches[match_instance.channel.id]
-
+        bot = ctx.bot if ctx is not None else match_instance.bot
+        if bot.active_matches.get(match_instance.channel.id) is match_instance:
+            del bot.active_matches[match_instance.channel.id]
 
 
 class MatchDecisions:
@@ -124,15 +74,17 @@ class MatchDecisions:
         self.ctx = ctx
         self.mi = match_instance
 
-
     async def declare_innings(self):
-        from core.backend.views.declare_view import DeclarationView
+        from core.backend.views.declare_view import DeclarationView, declaration_block_reason
+        captain = self.mi.captain(self.mi.batting_turn)
+        reason = declaration_block_reason(self.mi, self.ctx.author)
+        if reason:
+            await self.ctx.send(reason)
+            return None
+        view = DeclarationView(self.mi, None, captain)
         message = await self.ctx.send(
-            f"**{self.mi.curr_batsman.name}**, do you want to declare the innings?",
-            view=DeclarationView(self.mi, None, self.mi.curr_batsman)
+            f"**{captain.name}**, do you want to declare the innings at **{self.mi.score}/{self.mi.wickets}**?",
+            view=view
         )
-        view = DeclarationView(self.mi, message, self.mi.curr_batsman)
-        await message.edit(view=view)
-
-
-
+        view.message = message
+        return view
